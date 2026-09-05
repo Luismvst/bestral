@@ -49,16 +49,41 @@ El paso 4 es el que nadie más tiene. Todo lo técnico existe para sostenerlo.
 - Generación inicial desde texto
 - Edición iterativa por texto
 - Por pista: mute, solo, volumen, **candado**
-- Por pista: 3 macros semánticos (nombres musicales, no parámetros de DSP; tabla en §6)
+- Por pista: 3 macros semánticos, 4 en el kick (nombres musicales, no DSP; tabla cerrada en §6)
 - Panel de código Strudel: solo lectura por defecto, editable por pista (ver §7)
 - Deshacer / rehacer
 - Guardar y recuperar proyectos
-- Compartir con enlace que reproduce el loop
+- Compartir con enlace que reproduce el loop, **y que suena en móvil**
+- **Exportar WAV**
 
 ### Fuera, deliberadamente
 
-Línea de tiempo y secciones · exportar audio · exportar MIDI · cuentas de pago ·
-colaboración · samples subidos por el usuario · más de un patrón por pista · móvil.
+Línea de tiempo y secciones · exportar MIDI · cuentas de pago · colaboración ·
+samples subidos por el usuario · más de un patrón por pista · **editar en móvil**.
+
+### Móvil: reproducir sí, editar no
+
+Los enlaces compartidos se abren en el móvil, siempre. Si el único mecanismo de distribución de
+v1 no funciona donde la gente lo va a abrir, el mecanismo está roto de nacimiento.
+
+La vista de enlace compartido es una página aparte y ligera: reproduce el loop, sin UI de
+edición. Es lo único que debe funcionar en móvil, y por eso el riesgo es acotado y verificable.
+La aplicación de edición sigue siendo solo escritorio.
+
+### Exportar WAV: por qué entra
+
+Sin poder llevarte lo que has hecho, Bestral es una demo y no una herramienta, y un prosumer lo
+nota en la segunda sesión.
+
+Entra con plan B garantizado, así que el riesgo es bajo:
+
+1. **Preferido:** `renderPatternAudio`, expuesto en el namespace de Strudel (visto en el spike).
+   Render offline, más rápido que tiempo real.
+2. **Respaldo:** `MediaRecorder` sobre el destino de audio, grabando en tiempo real. Un loop de
+   8 compases a 132 BPM son unos 15 segundos: aceptable, y funciona siempre.
+
+Verificar la opción 1 es la primera tarea de esta funcionalidad. Si falla, se cae al respaldo
+sin rediseñar nada.
 
 ### Riesgos del alcance, asumidos
 
@@ -137,15 +162,25 @@ Ese mapeo de macros es el trabajo artesanal que decide si Bestral suena bien. No
 difícil, es criterio musical, y **es el foso real** — no el código, que el AGPL nos obliga a
 publicar de todas formas.
 
-Macros por rol en v1 (cerrados, para que el plan no los invente):
+Macros por rol en v1 (cerrados, para que el plan no los invente). Los nombres son cómo se habla
+del techno, no parámetros de DSP: van en español salvo donde el anglicismo *es* el término que
+el prosumer ya reconoce.
 
-| Rol | Macros |
-|---|---|
-| kick | `punch`, `decay`, `tune` |
-| bass | `acidez`, `peso`, `movimiento` |
-| hats | `densidad`, `brillo`, `swing` |
-| perc | `densidad`, `caos`, `espacio` |
-| atmos | `amplitud`, `oscuridad`, `movimiento` |
+| Rol | Macros | Mapeo aproximado |
+|---|---|---|
+| kick | `cuerpo`, `click`, `cola`, `saturación` | sub/gain · transiente · decay · distorsión |
+| bass | `acidez`, `peso`, `glide` | cutoff+resonancia acoplados · octava y sub · portamento |
+| hats | `densidad`, `brillo`, `swing` | subdivisión · hpf+decay · shuffle |
+| perc | `densidad`, `caos`, `espacio` | eventos por ciclo · `sometimesBy` · reverb+delay |
+| atmos | `anchura`, `oscuridad`, `movimiento` | estéreo/chorus · filtro · LFO |
+
+El kick lleva cuatro y no tres a propósito: en techno el kick *es* el track, y `saturación` es
+el eje que separa un kick limpio de Berlín de uno de hard techno. Sin ese mando no se puede
+atender la petición más frecuente del género.
+
+**Fuera de v1, primer candidato para v2:** un macro global de `energía` que mueva varios macros
+de pista a la vez. Es muy vendible, pero interactúa con los candados y con el historial de
+formas que no conviene resolver antes de tener usuarios reales.
 
 ### Longitud del loop
 
@@ -237,17 +272,24 @@ Conclusiones:
 
 ## 9. Sonido
 
-**Híbrido: síntesis paramétrica + pack propio corto.**
+**Destino: síntesis paramétrica + pack propio corto. Pero el código no espera al pack.**
 
-- Todo lo tonal (bass, stabs, atmos) y el kick, por síntesis. Da mandos continuos a la IA,
-  que es lo que hace posible *"más ácido"* como gesto y no como regeneración.
-- 10-15 samples propios o CC0 de percusión (hats, clap, ride, perc), donde la síntesis delata
-  el juguete.
+- Todo lo tonal (bass, atmos) y el kick, por síntesis. Da mandos continuos a la IA, que es lo
+  que hace posible *"más ácido"* como gesto y no como regeneración.
+- 8-10 samples CC0 de percusión (hats, clap, ride, perc), donde la síntesis delata el juguete.
 
-Los samples por defecto de Strudel (`tidal-drum-machines`, VCSL) quedan descartados: licencias
-mixtas que estorban al monetizar, sonido genérico de live coding, y el spike confirmó que ni
-siquiera vienen cargados. **El pack propio no es una preferencia estética, es infraestructura
-obligatoria.**
+**Secuenciación: v1 arranca 100% síntesis, sin ningún sample.** Conseguir y depurar un pack es
+trabajo que no es código y puede bloquear semanas mientras el desarrollo espera. Con síntesis
+pura nada se bloquea, y como el campo `sound` ya existe en el modelo, incorporar el pack después
+no toca la arquitectura.
+
+El pack CC0 es por tanto un paso independiente **antes del lanzamiento público, no antes del
+código**. Los hats sintéticos (ruido + paso alto + envelope corto) aguantan dignamente dentro de
+un mix de techno; el clap es el que peor sale y es el primero que debe sustituirse por sample.
+
+Los samples por defecto de Strudel (`tidal-drum-machines`, VCSL) quedan descartados en cualquier
+caso: licencias mixtas que estorban al monetizar, sonido genérico de live coding, y el spike
+confirmó que ni siquiera vienen cargados.
 
 ## 10. Stack y licencia
 
@@ -270,9 +312,12 @@ Esa decisión es barata precisamente porque la capa de proyecto es nuestra desde
 
 Cuatro. Tres observados en el spike, no imaginados.
 
-1. **Precargar samples antes de sonar.** En el spike `bank()` dio 404 y el kick no existió, en
-   silencio. Si el usuario le da a play y suena a medias la primera vez, ya perdimos. El play se
-   bloquea hasta que el pack está cargado.
+1. **Nada suena a medias en el primer play.** En el spike `bank()` dio 404 y el kick
+   simplemente no existió, en silencio y sin aviso. Si el usuario le da a play y suena
+   incompleto la primera vez, ya perdimos. En v1 (síntesis pura) esto significa esperar a que
+   el AudioContext esté corriendo; cuando llegue el pack CC0 (§9), significa además bloquear
+   el play hasta que las muestras estén cargadas. La regla es la misma: **o suena entero, o no
+   suena.**
 2. **Cuantizar los cambios al siguiente compás.** Sin esto, cada edición entra a contratiempo.
 3. **AudioContext necesita un gesto real del usuario.** El primer botón tiene que ser un botón,
    no un efecto al montar.
@@ -307,7 +352,11 @@ ediciones ni siquiera llaman al modelo, porque mover un macro se recompila en lo
 - **El LLM puede escribir mini-notation válida pero musicalmente mala.** No hay validación
   posible contra eso. Se ataca con ejemplos few-shot de techno bueno: es iteración de prompt,
   no de código.
-- **Solo escritorio en v1.** Web Audio en Safari móvil da más problemas de los que podemos pagar.
+- **Editar es solo escritorio.** El enlace compartido sí debe sonar en móvil (§4), y ese es el
+  único punto donde asumimos el riesgo de Web Audio en Safari móvil — acotado, porque esa vista
+  solo reproduce.
+- **El clap sintetizado es el eslabón débil** hasta que llegue el pack CC0. Es lo primero que
+  delatará al producto si alguien lo escucha con atención.
 - **El AGPL sigue ahí**, dormido hasta que se monetice en serio.
 - **La calidad del sonido depende del mapeo de macros**, que es criterio musical artesanal y no
   se puede automatizar ni delegar.
