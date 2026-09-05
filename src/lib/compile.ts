@@ -17,7 +17,9 @@ function cps(bpm: number): number {
 
 /** Un patrón que solo tiene silencios no merece una línea en el documento. */
 function esSilencio(pattern: string): boolean {
-  return pattern.replace(/[~\s[\]]/g, '') === '';
+  // Las réplicas (~!4) no deben dejar dígitos sueltos que parezcan notas,
+  // así que se quitan antes de pelar el resto de la sintaxis de silencio.
+  return pattern.replace(/!\d*/g, '').replace(/[~\s[\]<>._*]/g, '') === '';
 }
 
 /**
@@ -47,9 +49,5 @@ export function compile(project: Project): string {
     .map(compileTrack)
     .filter((l): l is string => l !== null);
 
-  const conSwing = project.swing > 0
-    ? lineas.map((l) => `${l}.swingBy(${Number(project.swing.toFixed(2))}, 4)`)
-    : lineas;
-
-  return [`setcps(${cps(project.bpm)})`, '', ...conSwing].join('\n');
+  return [`setcps(${cps(project.bpm)})`, '', ...lineas].join('\n');
 }

@@ -43,12 +43,16 @@ function bass(m: Record<string, number>): Chain {
 }
 
 function hats(m: Record<string, number>): Chain {
-  return [
+  const c: Chain = [
     `s("white")`,
     `hpf(${expLerp(m.brillo, 3000, 12000)})`,
     `decay(${lerp(m.brillo, 0.06, 0.015, 3)})`,
     `sustain(0)`,
   ];
+  // densidad invertida: a menos densidad, más golpes se caen (mismo patrón que caos en perc)
+  if (1 - m.densidad > 0.05) c.push(`degradeBy(${lerp(1 - m.densidad, 0, 0.45)})`);
+  if (m.swing > 0.02) c.push(`swingBy(${lerp(m.swing, 0, 0.5)}, 8)`);
+  return c;
 }
 
 function perc(m: Record<string, number>): Chain {

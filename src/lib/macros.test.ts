@@ -47,6 +47,33 @@ describe('mapeo de macros', () => {
     }
   });
 
+  it('densidad de los hats a 1 no emite degradeBy', () => {
+    const s = macroParams('hats', { densidad: 1, brillo: 0.5, swing: 0 });
+    expect(s).not.toContain('degradeBy');
+  });
+
+  it('densidad baja de los hats sí emite degradeBy', () => {
+    const s = macroParams('hats', { densidad: 0.1, brillo: 0.5, swing: 0 });
+    expect(s).toContain('degradeBy(');
+  });
+
+  it('densidad de los hats es monótona: menos densidad, más degradeBy', () => {
+    const degradeDe = (densidad: number) =>
+      Number(macroParams('hats', { densidad, brillo: 0.5, swing: 0 })
+        .match(/degradeBy\(([\d.]+)\)/)![1]);
+    expect(degradeDe(0.1)).toBeGreaterThan(degradeDe(0.6));
+  });
+
+  it('swing de los hats a 0 no emite swingBy', () => {
+    const s = macroParams('hats', { densidad: 0.5, brillo: 0.5, swing: 0 });
+    expect(s).not.toContain('swingBy');
+  });
+
+  it('swing alto de los hats sí emite swingBy', () => {
+    const s = macroParams('hats', { densidad: 0.5, brillo: 0.5, swing: 0.9 });
+    expect(s).toContain('swingBy(');
+  });
+
   it('no emite NaN para ningún rol ni valor extremo', () => {
     for (const v of [0, 1]) {
       const todos = { cuerpo: v, click: v, cola: v, 'saturación': v, acidez: v, peso: v,

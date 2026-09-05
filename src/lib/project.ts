@@ -26,7 +26,6 @@ const TrackSchema = z.object({
 export const ProjectSchema = z
   .object({
     bpm: z.number().int().min(60).max(200),
-    swing: z.number().min(0).max(1),
     tracks: z.array(TrackSchema).length(ROLES.length),
   })
   .superRefine((project, ctx) => {
@@ -73,7 +72,7 @@ function neutralMacros(role: TrackRole): Record<string, number> {
 const DEFAULT_PATTERNS: Record<TrackRole, string> = {
   kick:  'c1*4',
   bass:  '<c2 c2 eb2 c2>',
-  hats:  '~ x ~ x',
+  hats:  'x*8',
   perc:  '~',
   atmos: '~',
 };
@@ -85,7 +84,6 @@ const DEFAULT_GAIN: Record<TrackRole, number> = {
 export function defaultProject(): Project {
   return {
     bpm: 132,
-    swing: 0,
     tracks: ROLES.map((role) => ({
       role,
       sound: role,
