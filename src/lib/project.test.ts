@@ -62,6 +62,15 @@ describe('modelo de proyecto', () => {
     expect(() => ProjectSchema.parse(p)).toThrow();
   });
 
+  it('rechaza macros del mismo tamaño pero de otro rol', () => {
+    // hats y perc tienen ambos 3 macros y comparten "densidad": es el único caso
+    // que distingue igualdad de conjuntos de una comprobación ingenua por tamaño.
+    const p = defaultProject();
+    const hats = p.tracks.find((t) => t.role === 'hats')!;
+    hats.macros = Object.fromEntries(MACROS.perc.map((m) => [m, 0.5]));
+    expect(() => ProjectSchema.parse(p)).toThrow();
+  });
+
   it('rechaza roles duplicados aunque el array tenga la longitud correcta', () => {
     const p = defaultProject();
     for (const track of p.tracks) {
