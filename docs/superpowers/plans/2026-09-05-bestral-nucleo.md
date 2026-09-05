@@ -21,6 +21,7 @@
 - **v1 es 100% síntesis.** Ningún sample, ningún `bank()`, ningún nombre de drum machine.
 - **No se testea el audio.** Los tests son puros: strings y estructuras.
 - **El compilador produce un string**, no un Pattern. El panel de código muestra ese mismo string.
+- **No hay swing global.** El swing es un macro de la pista `hats`; el unico campo global ademas de las pistas es `bpm`. Nada debe anexarse a una linea despues de su comentario `// rol`.
 - **Sin campo de longitud del loop:** la variación larga sale de las alternancias `<>` de la mini-notation.
 - **Idioma de la UI: español.**
 
@@ -222,7 +223,6 @@ const TrackSchema = z.object({
 
 export const ProjectSchema = z.object({
   bpm: z.number().int().min(60).max(200),
-  swing: z.number().min(0).max(1),
   tracks: z.array(TrackSchema).length(ROLES.length),
 });
 
@@ -249,7 +249,6 @@ const DEFAULT_GAIN: Record<TrackRole, number> = {
 export function defaultProject(): Project {
   return {
     bpm: 132,
-    swing: 0,
     tracks: ROLES.map((role) => ({
       role,
       sound: role,
@@ -531,9 +530,12 @@ describe('compilador', () => {
     expect(compileTrack(p.tracks[1])).toBeNull();
   });
 
-  it('el swing global se aplica solo cuando es mayor que cero', () => {
-    expect(compile({ ...defaultProject(), swing: 0 })).not.toContain('.swingBy');
-    expect(compile({ ...defaultProject(), swing: 0.3 })).toContain('.swingBy');
+  it('el swingBy de los hats sale ANTES del comentario de la linea', () => {
+    // Guarda de regresion: si se anexa despues del `// rol`, cae dentro del
+    // comentario de JavaScript y no se ejecuta nunca.
+    const hats = defaultProject().tracks.find((t) => t.role === 'hats')!;
+    const linea = compileTrack(hats)!;
+    expect(linea.indexOf('swingBy')).toBeLessThan(linea.indexOf('//'));
   });
 
   it('es determinista: mismo proyecto, mismo código', () => {
@@ -616,11 +618,9 @@ export function compile(project: Project): string {
     .map(compileTrack)
     .filter((l): l is string => l !== null);
 
-  const conSwing = project.swing > 0
-    ? lineas.map((l) => `${l}.swingBy(${Number(project.swing.toFixed(2))}, 4)`)
-    : lineas;
-
-  return [`setcps(${cps(project.bpm)})`, '', ...conSwing].join('\n');
+  // Sin post-proceso: lo que se anexe tras el `// rol` cae dentro del
+  // comentario. El swing es un macro de la pista hats, no un campo global.
+  return [`setcps(${cps(project.bpm)})`, '', ...lineas].join('\n');
 }
 ```
 
@@ -772,7 +772,7 @@ describe('aplicador — aplicación', () => {
   });
 
   it('el resultado sigue siendo un proyecto válido', () => {
-    const r = applyOps(defaultProject(), [{ type: 'set_global', bpm: 145, swing: 0.2 }]);
+    const r = applyOps(defaultProject(), [{ type: 'set_global', bpm: 145 }]);
     expect(r.project.tracks).toHaveLength(5);
     expect(r.rejected).toHaveLength(0);
   });
@@ -799,7 +799,7 @@ export const OpSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('set_pattern'), track: role, mini: z.string().min(1).max(200) }),
   z.object({ type: z.literal('set_sound'), track: role, sound: z.string().min(1) }),
   z.object({ type: z.literal('set_track'), track: role, gain: z.number().min(0).max(1.5).optional(), muted: z.boolean().optional() }),
-  z.object({ type: z.literal('set_global'), bpm: z.number().int().min(60).max(200).optional(), swing: z.number().min(0).max(1).optional() }),
+  z.object({ type: z.literal('set_global'), bpm: z.number().int().min(60).max(200) }),
   z.object({ type: z.literal('set_raw'), track: role, code: z.string().max(600).nullable() }),
 ]);
 
@@ -911,7 +911,7 @@ function aplicarUna(p: Project, op: Op): Project | string {
       return conPista(op.track, (t) => ({ ...t, raw: op.code }));
 
     case 'set_global':
-      return { ...p, bpm: op.bpm ?? p.bpm, swing: op.swing ?? p.swing };
+      return { ...p, bpm: op.bpm };
   }
 }
 ```
@@ -1529,7 +1529,7 @@ export function systemPrompt(project: Project): string {
 Traduces lo que pide el usuario a operaciones sobre el proyecto. NO escribes prosa larga
 ni explicas teoría musical: devuelves operaciones y un comentario de una frase.
 
-ESTADO ACTUAL — ${project.bpm} BPM, swing ${project.swing}
+ESTADO ACTUAL — ${project.bpm} BPM
 ${pistas}
 
 REGLAS

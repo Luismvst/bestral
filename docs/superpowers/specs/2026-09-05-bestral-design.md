@@ -136,7 +136,7 @@ Eso mantiene barata la decisión sobre el AGPL (§10).
 
 ```ts
 {
-  bpm: 132, swing: 0,
+  bpm: 132,
   tracks: [{
     role: "kick",              // 5 roles fijos
     sound: "kick_dry",         // id del pack
@@ -170,7 +170,7 @@ el prosumer ya reconoce.
 |---|---|---|
 | kick | `cuerpo`, `click`, `cola`, `saturación` | sub/gain · transiente · decay · distorsión |
 | bass | `acidez`, `peso`, `glide` | cutoff+resonancia acoplados · octava y sub · portamento |
-| hats | `densidad`, `brillo`, `swing` | subdivisión · hpf+decay · shuffle |
+| hats | `densidad`, `brillo`, `swing` | degradeBy inverso · hpf+decay · swingBy de la pista |
 | perc | `densidad`, `caos`, `espacio` | eventos por ciclo · `sometimesBy` · reverb+delay |
 | atmos | `anchura`, `oscuridad`, `movimiento` | estéreo/chorus · filtro · LFO |
 
@@ -181,6 +181,19 @@ atender la petición más frecuente del género.
 **Fuera de v1, primer candidato para v2:** un macro global de `energía` que mueva varios macros
 de pista a la vez. Es muy vendible, pero interactúa con los candados y con el historial de
 formas que no conviene resolver antes de tener usuarios reales.
+
+### El swing vive en los hats, no en el proyecto
+
+No hay campo `swing` global. Se intentó tener ambos y colisionaban: el macro `swing` de la pista
+`hats` y el campo global emitían los dos `.swingBy()` sobre la misma línea, y el usuario veía dos
+mandos con el mismo nombre.
+
+Gana el de la pista, porque en techno el swing pertenece a la percusión — un kick a negras rectas
+no lo quiere. El único global además de las pistas es `bpm`.
+
+Como efecto secundario, esto eliminó un fallo real: el compilador anexaba el swing global *después*
+del comentario `// rol` de cada línea, así que el `.swingBy()` caía dentro del comentario de
+JavaScript y no se ejecutaba nunca. **Nada debe anexarse a una línea después de su comentario.**
 
 ### Longitud del loop
 
@@ -197,7 +210,7 @@ set_macro   { track, macro, value }     // 0..1
 set_pattern { track, mini }
 set_sound   { track, sound }
 set_track   { track, gain?, muted? }
-set_global  { bpm?, swing? }
+set_global  { bpm }
 set_raw     { track, code | null }      // válvula de escape, ver §7
 ```
 
