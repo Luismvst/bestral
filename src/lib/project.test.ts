@@ -43,4 +43,30 @@ describe('modelo de proyecto', () => {
       expect(track.raw).toBeNull();
     }
   });
+
+  it('rechaza macros que no pertenecen al rol', () => {
+    const p = defaultProject();
+    p.tracks[0].macros = { foo: 0.5 };
+    expect(() => ProjectSchema.parse(p)).toThrow();
+  });
+
+  it('rechaza una pista a la que le falta un macro de su rol', () => {
+    const p = defaultProject();
+    delete (p.tracks[0].macros as Record<string, number>).saturación;
+    expect(() => ProjectSchema.parse(p)).toThrow();
+  });
+
+  it('rechaza una pista con los macros de otro rol', () => {
+    const p = defaultProject();
+    p.tracks[0].macros = Object.fromEntries(MACROS.atmos.map((m) => [m, 0.5]));
+    expect(() => ProjectSchema.parse(p)).toThrow();
+  });
+
+  it('rechaza roles duplicados aunque el array tenga la longitud correcta', () => {
+    const p = defaultProject();
+    for (const track of p.tracks) {
+      (track as { role: string }).role = 'kick';
+    }
+    expect(() => ProjectSchema.parse(p)).toThrow();
+  });
 });

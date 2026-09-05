@@ -23,14 +23,47 @@ const TrackSchema = z.object({
   locked: z.boolean(),
 });
 
-export const ProjectSchema = z.object({
-  bpm: z.number().int().min(60).max(200),
-  swing: z.number().min(0).max(1),
-  tracks: z.array(TrackSchema).length(ROLES.length),
-});
+export const ProjectSchema = z
+  .object({
+    bpm: z.number().int().min(60).max(200),
+    swing: z.number().min(0).max(1),
+    tracks: z.array(TrackSchema).length(ROLES.length),
+  })
+  .superRefine((project, ctx) => {
+    const seenRoles = new Set<TrackRole>();
+    project.tracks.forEach((track, i) => {
+      if (seenRoles.has(track.role)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `rol duplicado: '${track.role}' ya aparece en otra pista`,
+          path: ['tracks', i, 'role'],
+        });
+      }
+      seenRoles.add(track.role);
 
-export type Track = z.infer<typeof TrackSchema> & { role: TrackRole };
-export type Project = z.infer<typeof ProjectSchema> & { tracks: Track[] };
+      const expected = new Set<string>(MACROS[track.role]);
+      const actual = new Set(Object.keys(track.macros));
+      if (expected.size !== actual.size || [...expected].some((m) => !actual.has(m))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `los macros de la pista '${track.role}' deben ser exactamente [${MACROS[track.role].join(', ')}]`,
+          path: ['tracks', i, 'macros'],
+        });
+      }
+    });
+    for (const role of ROLES) {
+      if (!seenRoles.has(role)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `falta la pista de rol '${role}'`,
+          path: ['tracks'],
+        });
+      }
+    }
+  });
+
+export type Track = z.infer<typeof TrackSchema>;
+export type Project = z.infer<typeof ProjectSchema>;
 
 /** Todos los macros del rol a 0.5: punto de partida neutro. */
 function neutralMacros(role: TrackRole): Record<string, number> {
