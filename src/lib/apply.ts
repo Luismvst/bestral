@@ -29,7 +29,12 @@ export function applyOps(
     const op = parsed.data;
 
     if (op.type !== 'set_global') {
-      const t = actual.tracks.find((x) => x.role === op.track);
+      // El candado se lee del proyecto ORIGINAL, no del que se va actualizando.
+      // Hoy da igual, porque ninguna operación puede escribir `locked`; pero esa
+      // es una garantía accidental. Si mañana una operación pudiera tocarlo, otra
+      // anterior del mismo lote abriría el candado para las siguientes. Leyendo
+      // del original, la garantía pasa a ser estructural.
+      const t = project.tracks.find((x) => x.role === op.track);
       if (!t) {
         rejected.push({ op, reason: `no existe la pista ${op.track}` });
         continue;

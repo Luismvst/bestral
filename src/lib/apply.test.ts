@@ -116,3 +116,28 @@ describe('aplicador — aplicación', () => {
     expect(r.rejected).toHaveLength(0);
   });
 });
+
+describe('aplicador — endurecimiento del candado', () => {
+  it('ignora un "locked" colado en el payload de una operación', () => {
+    const p = defaultProject();
+    const r = applyOps(p, [
+      { type: 'set_track', track: 'kick', gain: 0.5, locked: true },
+    ]);
+    expect(r.rejected).toHaveLength(0);
+    expect(track(r.project, 'kick').locked).toBe(false);
+  });
+
+  it('el candado se evalúa contra el proyecto original en todo el lote', () => {
+    const p = defaultProject();
+    track(p, 'kick').locked = true;
+    // Aunque una operación anterior del lote tocase la misma pista, el candado
+    // sigue leyéndose del original: ninguna de las dos debe pasar.
+    const r = applyOps(p, [
+      { type: 'set_track', track: 'kick', muted: true },
+      { type: 'set_pattern', track: 'kick', mini: 'c1*16' },
+    ]);
+    expect(r.rejected).toHaveLength(2);
+    expect(track(r.project, 'kick').muted).toBe(false);
+    expect(track(r.project, 'kick').pattern).toBe(track(p, 'kick').pattern);
+  });
+});
