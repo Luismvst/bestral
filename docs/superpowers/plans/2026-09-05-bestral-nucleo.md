@@ -23,6 +23,7 @@
 - **El compilador produce un string**, no un Pattern. El panel de código muestra ese mismo string.
 - **No hay swing global.** El swing es un macro de la pista `hats`; el unico campo global ademas de las pistas es `bpm`. Nada debe anexarse a una linea despues de su comentario `// rol`.
 - **Sin campo de longitud del loop:** la variación larga sale de las alternancias `<>` de la mini-notation.
+- **`evaluate` y `hush` son exports ESM de `@strudel/web`, no globales de `window`.** Solo `initStrudel` se cuelga de `window`.
 - **Idioma de la UI: español.**
 
 ---
@@ -1755,9 +1756,11 @@ export function CodePanel({ project, onOp }: {
   const guardar = async () => {
     if (!editando) return;
     // Se evalúa ANTES de aplicar: nunca se deja el proyecto en estado mudo (spec §7).
+    // OJO: `evaluate` es un export ESM de @strudel/web, NO un global de window.
+    // Verificado en la tarea 6 leyendo el bundle y comprobándolo en Chrome.
     try {
-      const w = window as unknown as { evaluate?: (c: string) => Promise<unknown> };
-      if (w.evaluate) await w.evaluate(`$: ${borrador}`);
+      const { evaluate } = await import('@strudel/web');
+      await evaluate(`$: ${borrador}`);
     } catch (e) {
       setError(`Ese código no compila: ${String(e)}`);
       return;
