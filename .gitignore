@@ -5,3 +5,6 @@ node_modules/
 *.stackdump
 .superpowers/
 *.tsbuildinfo
+.open-next/
+.wrangler/
+.dev.vars
