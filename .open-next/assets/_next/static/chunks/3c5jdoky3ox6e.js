@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,65578,t=>{t.q("/_next/static/media/clockworker-ZDiUtESR.3z8p5ehe4836t.js")}]);
