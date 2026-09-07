@@ -6,3 +6,5 @@ node_modules/
 .superpowers/
 *.tsbuildinfo
 out/
+.open-next/
+.wrangler/
